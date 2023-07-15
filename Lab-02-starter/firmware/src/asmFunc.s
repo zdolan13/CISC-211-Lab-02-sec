@@ -13,17 +13,17 @@
 /********************************************************************
 function name: asmFunc
 function description:
-     output = asmFunc ( input )
+     output = asmFunc ( input1, input2 )
      
 where:
-     input:  an integer value passed in from the C program
+     input1:  an integer value passed in from the C program
+     input2:  an integer value passed in from the C program
      output: the integer value returned to the C function
      
-     function description: The C call pases in an integer value by placing
-                           it in register 0 (r0).
-                           asmFunc adds 42 to that value.
-                           It returns the value to the C call by storing it
-                           in r0 (so the original value is overwritten).
+     function description: The C call passes in the two values to be summed
+                           in registers 0 and 1 (r0 and r1).
+                           asmFunc adds the two integer values together
+                           and places the result in r0.
      
      notes:
         None
@@ -36,9 +36,12 @@ asmFunc:
 
     # save the caller's registers, as required by the ARM calling convention
     push {r4-r11,LR}
+
+    /*** STUDENTS: Place your code BELOW this line!!! **************/
+
+    LDR r0,=0x80000000
     
-    # add 42 to the current value of r0, and place the result in r0
-    ADD r0, r0, 42
+    /*** STUDENTS: Place your code ABOVE this line!!! **************/
     
     # restore the caller's registers, as required by the ARM calling convention
     pop {r4-r11,LR}

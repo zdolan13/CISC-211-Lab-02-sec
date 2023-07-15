@@ -52,8 +52,13 @@ static volatile bool isRTCExpired = false;
 static volatile bool changeTempSamplingRate = false;
 static volatile bool isUSARTTxComplete = true;
 static uint8_t uartTxBuffer[MAX_PRINT_LEN] = {0};
-// static char * pass = "pass";
-// static char * fail = "fail";
+
+// Test cases for testing func that adds two numbers
+static int32_t inp1Array[] = {  1, 24,  3, -100};
+static int32_t inp2Array[] = {  7, 12, 39,    1};
+
+static char * pass = "PASS";
+static char * fail = "FAIL";
 
 // VB COMMENT:
 // The ARM calling convention permits the use of up to 4 registers, r0-r3
@@ -63,7 +68,7 @@ static uint8_t uartTxBuffer[MAX_PRINT_LEN] = {0};
 // value.
 //
 // Function signature
-extern int32_t asmFunc(int32_t);
+extern int32_t asmFunc(int32_t, int32_t);
 
 // set this to 0 if using the simulator. BUT note that the simulator
 // does NOT support the UART, so there's no way to print output.
@@ -86,6 +91,58 @@ static void usartDmaChannelHandler(DMAC_TRANSFER_EVENT event, uintptr_t contextH
 }
 #endif
 
+
+// return failure count. A return value of 0 means everything passed.
+static int testResult(int testNum, 
+                      int32_t testInp1, 
+                      int32_t testInp2, 
+                      int32_t asmResult,
+                      int32_t *passCount,
+                      int32_t *failCount)
+{
+    // for this lab, each test case corresponds to a single pass or fail
+    // But for future labs, one test case may have multiple pass/fail criteria
+    // So I'm setting it up this way so it'll work for future labs, too --VB
+    *failCount = 0;
+    *passCount = 0;
+    char *s1 = "";
+    // char *s2 = pass;
+    int32_t correctAnswer = testInp1 + testInp2;
+    if (asmResult != correctAnswer)
+    {
+        s1 = fail;  // assign the failure string to s1
+        *failCount += 1;  // increment the failure count
+    }
+    else
+    {
+        s1 = pass;  // assign the pass string to s1
+        *passCount += 1;  // increment the pass count
+    }
+       
+    // build the string to be sent out over the serial lines
+    snprintf((char*)uartTxBuffer, MAX_PRINT_LEN,
+            "========= Test Number: %d\r\n"
+            "test input 1:    %8ld\r\n"
+            "test input 2:    %8ld\r\n"
+            "expected result: %8ld\r\n"
+            "actual result:   %8ld\r\n"
+            "pass/fail:       %s\r\n"
+            "\r\n",
+            testNum,testInp1,testInp2,correctAnswer,asmResult,s1);
+
+#if USING_HW 
+    // send the string over the serial bus using the UART
+    DMAC_ChannelTransfer(DMAC_CHANNEL_0, uartTxBuffer, \
+        (const void *)&(SERCOM5_REGS->USART_INT.SERCOM_DATA), \
+        strlen((const char*)uartTxBuffer));
+#endif
+
+    return *failCount;
+    
+}
+
+
+
 // *****************************************************************************
 // *****************************************************************************
 // Section: Main Entry Point
@@ -100,51 +157,93 @@ int main ( void )
     SYS_Initialize ( NULL );
     DMAC_ChannelCallbackRegister(DMAC_CHANNEL_0, usartDmaChannelHandler, 0);
     RTC_Timer32CallbackRegister(rtcEventHandler, 0);
+    RTC_Timer32Compare0Set(PERIOD_500MS);
     RTC_Timer32Start();
 #else // using the simulator
     isRTCExpired = true;
     isUSARTTxComplete = true;
 #endif //SIMULATOR
 
-    int32_t inputValue = 0;
-    int32_t outputValue = 0;
-    uint32_t testCount = 0;
+    // initialize all the variables
+    int32_t inp1 = 0;
+    int32_t inp2 = 0;
+    int32_t result = 0;
+    int32_t passCount = 0;
+    int32_t failCount = 0;
+    int32_t totalPassCount = 0;
+    int32_t totalFailCount = 0;
+    uint32_t numTestCases = sizeof(inp1Array)/sizeof(inp1Array[0]);
     
+    // Loop forever
     while ( true )
     {
-        // Toggle the LED to show we're running a new test case
-        LED0_Toggle();
+        // Do the tests
+        for (int testCase = 0; testCase < numTestCases; ++testCase)
+        {
+            // Toggle the LED to show we're running a new test case
+            LED0_Toggle();
 
-        // reset the state variables for the timer and serial port funcs
-        isRTCExpired = false;
-        isUSARTTxComplete = false;
+            // reset the state variables for the timer and serial port funcs
+            isRTCExpired = false;
+            isUSARTTxComplete = false;
+            
+            // set the input values
+            inp1 = inp1Array[testCase];
+            inp2 = inp2Array[testCase];
 
-        // !!!! THIS IS WHERE YOUR ASSEMBLY LANGUAGE PROGRAM GETS CALLED!!!!
-        // Call our assembly function defined in file asmFunc.s
-        outputValue = asmFunc(inputValue);
+            // !!!! THIS IS WHERE YOUR ASSEMBLY LANGUAGE PROGRAM GETS CALLED!!!!
+            // Call our assembly function defined in file asmFunc.s
+            result = asmFunc(inp1, inp2);
+            
+            // test the result and see if it passed
+            failCount = testResult(testCase,inp1,inp2,result,
+                                   &passCount,&failCount);
+            totalPassCount = totalPassCount + passCount;
+            totalFailCount = totalFailCount + failCount;
 
-        // Now print the result to the serial port
-        snprintf((char*)uartTxBuffer, MAX_PRINT_LEN,
-                "========= Test Number: %lu\r\n"
-                "input  value: %ld\r\n"
-                "output value: %ld\r\n"
-                "\r\n",
-                testCount, inputValue, outputValue); 
+#if USING_HW
+            // spin here until the UART has completed transmission
+            // and the timer has expired
+            //while  (false == isUSARTTxComplete ); 
+            while ((isRTCExpired == false) ||
+                   (isUSARTTxComplete == false));
+#endif
 
-        // add 1 to the test counter
-        ++testCount;
+        } // for each test case
+        
+        // When all test cases are complete, print the pass/fail statistics
+        // Keep looping so that students can see code is still running.
+        // We do this in case there are very few tests and they don't have the
+        // terminal hooked up in time.
+        uint32_t idleCount = 1;
+        uint32_t totalTests = totalPassCount + totalFailCount;
+        while(true)      // post-test forever loop
+        {
+            isRTCExpired = false;
+            isUSARTTxComplete = false;
+            snprintf((char*)uartTxBuffer, MAX_PRINT_LEN,
+                    "========= Post-test Idle Cycle Number: %ld\r\n"
+                    "Summary of tests: %ld of %ld tests passed\r\n"
+                    "\r\n",
+                    idleCount, totalPassCount, totalTests); 
 
 #if USING_HW 
-        DMAC_ChannelTransfer(DMAC_CHANNEL_0, uartTxBuffer, \
-            (const void *)&(SERCOM5_REGS->USART_INT.SERCOM_DATA), \
-            strlen((const char*)uartTxBuffer));
+            DMAC_ChannelTransfer(DMAC_CHANNEL_0, uartTxBuffer, \
+                (const void *)&(SERCOM5_REGS->USART_INT.SERCOM_DATA), \
+                strlen((const char*)uartTxBuffer));
+            // spin here, waiting for timer and UART to complete
+            LED0_Toggle();
+            ++idleCount;
+            // slow down the blink rate after the tests have been executed
+            RTC_Timer32Compare0Set(PERIOD_4S);
 
-        // spin here until the UART has completed transmission
-        // and the timer has expired
-        //while  (false == isUSARTTxComplete ); 
-        while ((isRTCExpired == false) ||
-               (isUSARTTxComplete == false));
+            while ((isRTCExpired == false) ||
+                   (isUSARTTxComplete == false));
 #endif
+        } // end - post-test forever loop
+        
+        // Should never get here...
+        break;
     } // while ...
             
     /* Execution should not come here during normal operation */
