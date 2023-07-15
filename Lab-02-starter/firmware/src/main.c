@@ -158,6 +158,7 @@ int main ( void )
     DMAC_ChannelCallbackRegister(DMAC_CHANNEL_0, usartDmaChannelHandler, 0);
     RTC_Timer32CallbackRegister(rtcEventHandler, 0);
     RTC_Timer32Compare0Set(PERIOD_500MS);
+    RTC_Timer32CounterSet(0);
     RTC_Timer32Start();
 #else // using the simulator
     isRTCExpired = true;
@@ -217,6 +218,7 @@ int main ( void )
         // terminal hooked up in time.
         uint32_t idleCount = 1;
         uint32_t totalTests = totalPassCount + totalFailCount;
+        bool firstTime = true;
         while(true)      // post-test forever loop
         {
             isRTCExpired = false;
@@ -234,11 +236,17 @@ int main ( void )
             // spin here, waiting for timer and UART to complete
             LED0_Toggle();
             ++idleCount;
-            // slow down the blink rate after the tests have been executed
-            RTC_Timer32Compare0Set(PERIOD_4S);
 
             while ((isRTCExpired == false) ||
                    (isUSARTTxComplete == false));
+
+            // slow down the blink rate after the tests have been executed
+            if (firstTime == true)
+            {
+                firstTime = false; // only execute this section once
+                RTC_Timer32Compare0Set(PERIOD_4S); // set blink period to 4sec
+                RTC_Timer32CounterSet(0); // reset timer to start at 0
+            }
 #endif
         } // end - post-test forever loop
         
