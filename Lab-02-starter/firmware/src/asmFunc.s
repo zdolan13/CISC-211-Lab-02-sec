@@ -1,12 +1,27 @@
 /*** asmFunc.s   ***/
 
 #include <xc.h>
+
+/* Tell the assembler that what follows is in data memory    */
+.data
+.align
  
-# Tell the assembler that what follows is in instruction memory    
+.global nameStr
+.type nameStr,%gnu_unique_object
+/* create a string */
+    
+nameStr: .asciz "Hello. My name is Inigo Montoya."  
+ 
+/* initialize a global variable that C can access to print the nameStr */
+.global nameStrPtr
+.type nameStrPtr,%gnu_unique_object
+nameStrPtr: .word nameStr   /* Assign the mem loc of nameStr to nameSrPtr */
+ 
+/* Tell the assembler that what follows is in instruction memory    */
 .text
 .align
 
-# Tell the assembler to allow both 16b and 32b extended Thumb instructions
+/* Tell the assembler to allow both 16b and 32b extended Thumb instructions */
 .syntax unified
 
     
@@ -27,8 +42,7 @@ where:
      
      notes:
         None
-     
-     
+          
 ********************************************************************/    
 .global asmFunc
 .type asmFunc,%function
@@ -37,9 +51,10 @@ asmFunc:
     # save the caller's registers, as required by the ARM calling convention
     push {r4-r11,LR}
 
+    LDR r0,=0x80000000 /** set r0 so it doesn't contain a random value */
+    
     /*** STUDENTS: Place your code BELOW this line!!! **************/
 
-    LDR r0,=0x80000000
     
     /*** STUDENTS: Place your code ABOVE this line!!! **************/
     

@@ -70,6 +70,9 @@ static char * fail = "FAIL";
 // Function signature
 extern int32_t asmFunc(int32_t, int32_t);
 
+// make the variable nameStrPtr available to the C program
+extern uint32_t nameStrPtr;
+
 // set this to 0 if using the simulator. BUT note that the simulator
 // does NOT support the UART, so there's no way to print output.
 #define USING_HW 1
@@ -105,8 +108,9 @@ static int testResult(int testNum,
     // So I'm setting it up this way so it'll work for future labs, too --VB
     *failCount = 0;
     *passCount = 0;
-    char *s1 = "";
-    // char *s2 = pass;
+    char *s1 = "OOPS";
+    static char *s2 = "OOPS";
+    static bool firstTime = true;
     int32_t correctAnswer = testInp1 + testInp2;
     if (asmResult != correctAnswer)
     {
@@ -118,7 +122,26 @@ static int testResult(int testNum,
         s1 = pass;  // assign the pass string to s1
         *passCount += 1;  // increment the pass count
     }
-       
+    
+    /* only check the string the first time through */
+    if (firstTime == true)
+    {
+        /* Now check the string */
+        int strTest = strcmp((char *)nameStrPtr, 
+                             "Hello. My name is Inigo Montoya.");
+        if (strTest == 0) // Make sure it changed! 0 means strs are equal
+        {
+            s2 = fail;  // assign the failure string to s1
+            *failCount += 1;  // increment the failure count
+        }
+        else
+        {
+            s2 = pass;  // assign the pass string to s1
+            *passCount += 1;  // increment the pass count
+        }
+        firstTime = false; // don't check the strings for subsequent test cases
+    }
+           
     // build the string to be sent out over the serial lines
     snprintf((char*)uartTxBuffer, MAX_PRINT_LEN,
             "========= Test Number: %d\r\n"
@@ -126,9 +149,18 @@ static int testResult(int testNum,
             "test input 2:    %8ld\r\n"
             "expected result: %8ld\r\n"
             "actual result:   %8ld\r\n"
-            "pass/fail:       %s\r\n"
+            "pass/fail:       %s\r\n\r\n"
+            "modified name string: %s\r\n"
+            "string test result:   %s\r\n"
             "\r\n",
-            testNum,testInp1,testInp2,correctAnswer,asmResult,s1);
+            testNum,
+            testInp1,
+            testInp2,
+            correctAnswer,
+            asmResult,
+            s1,
+            (char *)nameStrPtr,
+            s2);
 
 #if USING_HW 
     // send the string over the serial bus using the UART
