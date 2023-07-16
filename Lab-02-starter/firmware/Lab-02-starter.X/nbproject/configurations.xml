@@ -182,7 +182,7 @@
                    projectFiles="true">
       <itemPath>Makefile</itemPath>
       <itemPath>../src/config/sam_e51_cnano/harmony-manifest-success.yml</itemPath>
-      <itemPath>getting_started_sam_e51_cnano.mc3</itemPath>
+      <itemPath>sam_e51_cnano.mc3</itemPath>
     </logicalFolder>
     <logicalFolder name="LinkerScript"
                    displayName="Linker Files"
