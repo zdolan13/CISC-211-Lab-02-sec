@@ -10,6 +10,7 @@
 .type nameStr,%gnu_unique_object
 /* create a string */
     
+/*** STUDENTS: HINT: this is the string that the C code prints out!  **/
 nameStr: .asciz "Hello. My name is Inigo Montoya."  
  
 /* initialize a global variable that C can access to print the nameStr */
@@ -48,9 +49,12 @@ where:
 .type asmFunc,%function
 asmFunc:   
 
-    # save the caller's registers, as required by the ARM calling convention
+    /* save the caller's registers, as required by the ARM calling convention */
     push {r4-r11,LR}
 
+    /*** STUDENTS: delete this next instruction before inserting your
+     *             own code below!
+     ***/
     LDR r0,=0x80000000 /** set r0 so it doesn't contain a random value */
     
     /*** STUDENTS: Place your code BELOW this line!!! **************/
@@ -58,7 +62,9 @@ asmFunc:
     
     /*** STUDENTS: Place your code ABOVE this line!!! **************/
     
-    # restore the caller's registers, as required by the ARM calling convention
+    /* restore the caller's registers, as required by the 
+     * ARM calling convention 
+     */
     pop {r4-r11,LR}
 
     mov pc, lr	 /* asmFunc return to caller */
