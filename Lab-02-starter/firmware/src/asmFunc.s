@@ -65,6 +65,7 @@ asmFunc:
     /* restore the caller's registers, as required by the 
      * ARM calling convention 
      */
+    mrs r0,apsr
     pop {r4-r11,LR}
 
     mov pc, lr	 /* asmFunc return to caller */
