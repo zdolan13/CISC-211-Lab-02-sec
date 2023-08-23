@@ -52,10 +52,6 @@ asmFunc:
     /* save the caller's registers, as required by the ARM calling convention */
     push {r4-r11,LR}
 
-    /*** STUDENTS: delete this next instruction before inserting your
-     *             own code below!
-     ***/
-    LDR r0,=0x80000000 /** set r0 so it doesn't contain a random value */
     
     /*** STUDENTS: Place your code BELOW this line!!! **************/
 
@@ -65,7 +61,6 @@ asmFunc:
     /* restore the caller's registers, as required by the 
      * ARM calling convention 
      */
-    mrs r0,apsr
     pop {r4-r11,LR}
 
     mov pc, lr	 /* asmFunc return to caller */
